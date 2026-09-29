@@ -19,10 +19,9 @@
 - Comment-capable active files carry the Cavira header rendered in their native
   comment syntax. Strict JSON, generated binary metadata, binary assets, the
   header template, and n8n's byte-exact ESLint config are explicit exceptions.
-- LongMemory uses one Hydrograph engine across the library, CLI, server, MCP,
-  and VS Code extension.
-- The VS Code extension uses stable CLI JSON and workspace project scope; it
-  does not duplicate engine behavior.
+- LongMemory is a local-first memory engine used as a Node.js library; it ships
+  with a CLI, an HTTP server, and MCP transports for project-level use.
+- Validation uses TypeScript checks and unit tests for the public API surface.
 - AI code changes are stored as compact redacted patches with provenance and
   attribution confidence, not as silent full-file snapshots.
 - Project memory includes immutable reusable Skills with agent bindings,
@@ -53,7 +52,8 @@
   artifact checks, TypeScript checks, official integration validators, the
   deterministic benchmark smoke gate, dependency audit, production builds,
   live API/MCP smoke checks, and package-content inspection.
-- Deployment files cover Docker, Compose, Heroku, Railway, Render,
-  and DigitalOcean. Stateful API deployments require persistent `/data`.
+- Deployment is local: project-level npm install or local HTTP/MCP server.
+  Production deployments run the same code behind a reverse proxy with
+  `LONGMEMORY_API_KEY` set.
 - The repository and primary packages use Apache-2.0. The n8n community package
   remains MIT because n8n's strict validator requires it.

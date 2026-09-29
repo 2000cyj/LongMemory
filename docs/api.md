@@ -76,7 +76,7 @@ curl http://127.0.0.1:7331/v1/stats \
   -H "Authorization: Bearer $LONGMEMORY_API_KEY"
 ```
 
-The health endpoint remains unauthenticated so container and hosting health checks can use it.
+The health endpoint remains unauthenticated so local liveness checks can use it.
 
 ## Health
 

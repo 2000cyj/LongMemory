@@ -26,11 +26,11 @@ Security fixes target the latest release line. Older releases may receive guidan
 
 - Set `LONGMEMORY_API_KEY` for every network-accessible API or MCP deployment.
 - Terminate TLS at the platform proxy and restrict `LONGMEMORY_ALLOWED_ORIGINS`.
-- Mount `/data` on persistent encrypted storage and protect backups.
-- Run the container as its included non-root user.
+- Store the SQLite database on durable local storage and protect backups.
+- Run the engine process as a non-root user.
 - Use least-privilege embedding and connector credentials.
 - Keep tenant, user, project, agent, and framework identity server-bound.
 - Treat recalled content as untrusted evidence, never authorization or executable instructions.
 - Review connector import plans and keep destructive external writes disabled.
 
-Secrets must never be committed to `.env`, plugin artifacts, benchmark reports, or session imports.
+Secrets must never be committed to `.env`, plugin artifacts, or session imports.

@@ -264,14 +264,4 @@ The reusable benchmark harness includes the `multilingual` suite and eight gates
 7. No loss of original text
 8. Multilingual token-budget compliance
 
-Datasets live under `src/benchmarks/datasets`:
-
-- `multilingual_preferences.ts`
-- `multilingual_entities.ts`
-- `code_switching.ts`
-- `crosslingual_recall.ts`
-- `translation_safety.ts`
-
-```bash
-pnpm exec tsx benchmarks/src/cli.ts --quick --only=multilingual --ci
-```
+The multilingual fixtures live alongside the engine source as versioned TypeScript modules. Each fixture declares canonical text, optional translations, and expected recall outcomes. Use them as reference data when validating cross-lingual behavior in your own agent integration.

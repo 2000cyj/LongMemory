@@ -1,56 +1,30 @@
 #      __                      __  ___
-#     / /   ____  ____  ____ _/  |/  /__  ____ ___  ____  _______  __
+#     / /   ____  ____  ____ _/  |/  /_  ____ ___  ____  _______  __
 #    / /   / __ \/ __ \/ __ `/ /|_/ / _ \/ __ `__ \/ __ \/ ___/ / / /
 #   / /___/ /_/ / / / / /_/ / /  / /  __/ / / / / / /_/ / /  / /_/ /
 #  /_____/\____/_/ /_/\__, /_/  /_/\___/_/ /_/ /_/\____/_/   \__, /
 #                      /____/                                 /____/
 #
-#  cavira oss (c) 2026  -  nullure (c) 2026
-#  ----------------------------------------------------------
 #  file  : Makefile
-#  usage : supports LongMemory makefile
+#  usage : supports LongMemory local development
 
-.PHONY: help install build check benchmark serve extension package clean docker-build docker-up docker-down
+.PHONY: help install build typecheck clean
 
 help:
-	@echo "LongMemory release commands"
-	@echo "  make install       Install the pnpm workspace"
-	@echo "  make build         Build the npm package"
-	@echo "  make check         Run release checks without test suites"
-	@echo "  make benchmark     Run the deterministic smoke benchmark gate"
-	@echo "  make docker-up     Start API and MCP with Docker Compose"
+	@echo "LongMemory local development"
+	@echo "  make install     Install dependencies"
+	@echo "  make build       Compile TypeScript to dist/"
+	@echo "  make typecheck   Run TypeScript type check"
+	@echo "  make clean       Remove build artifacts"
 
 install:
-	corepack enable
-	pnpm install --frozen-lockfile
+	pnpm install
 
 build:
 	pnpm build
 
-check:
-	pnpm release:check
-
-benchmark:
-	pnpm bench:ci
-
-serve: build
-	pnpm start
-
-extension:
-	pnpm extension:build
-
-package:
-	pnpm pack
-	pnpm extension:package
-
-docker-build:
-	docker build -t longmemory:local .
-
-docker-up:
-	docker compose up --build -d longmemory
-
-docker-down:
-	docker compose down
+typecheck:
+	pnpm typecheck
 
 clean:
-	rm -rf dist apps/vscode-extension/dist integrations/n8n-nodes-longmemory/dist
+	rm -rf dist

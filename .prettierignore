@@ -14,7 +14,4 @@
 dist/
 node_modules/
 tmp/
-benchmarks/data/
-benchmarks/runs/
 *.vsix
-integrations/n8n-nodes-longmemory/eslint.config.mjs

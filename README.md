@@ -1,764 +1,192 @@
-<!--
-     __                      __  ___
-    / /   ____  ____  ____ _/  |/  /__  ____ ___  ____  _______  __
-   / /   / __ \/ __ \/ __ `/ /|_/ / _ \/ __ `__ \/ __ \/ ___/ / / /
-  / /___/ /_/ / / / / /_/ / /  / /  __/ / / / / / /_/ / /  / /_/ /
- /_____/\____/_/ /_/\__, /_/  /_/\___/_/ /_/ /_/\____/_/   \__, /
-                     /____/                                 /____/
-
- cavira oss (c) 2026  -  nullure (c) 2026
- ==========================================================
- file  : README.md
- usage : introduces LongMemory, its architecture, integrations, and deployment options
--->
-
 # LongMemory
 
-> **Durable, temporal, governed memory for AI agents. Not just RAG. Not just a vector database. Local-first and self-hosted.**
+> **Durable, temporal, governed project-level memory for Node.js agents. Local-first. Immutable by design.**
 
-[![npm](https://img.shields.io/npm/v/longmemory.svg)](https://www.npmjs.com/package/longmemory)
-[![PyPI](https://img.shields.io/pypi/v/longmemory-sdk.svg)](https://pypi.org/project/longmemory-sdk/)
-[![VS Code](https://img.shields.io/badge/VS%20Code-LongMemory-007ACC?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=CaviraOSS.longmemory-vscode)
-[![Container](https://img.shields.io/badge/GHCR-longmemory-2496ED?logo=docker)](https://github.com/CaviraOSS/LongMemory/pkgs/container/longmemory)
-[![License](https://img.shields.io/github/license/CaviraOSS/LongMemory)](LICENSE)
+A governed memory layer that lets your Node.js agents carry durable state across sessions without surrendering ownership, auditability, or temporal truth.
 
-![LongMemory Hydrograph](.github/longmemory.gif)
+- Immutable content with recorded-time and valid-time history
+- Executable typed edges, entities, worlds, grounding, contradiction, and provenance
+- Strict, historical, associative, world-grounded, and multilingual recall
+- Deterministic decay and explicit reinforcement without rewriting source truth
+- Local-first SQLite store; in-memory mode for embedded use
+- One TypeScript package: library import, CLI, HTTP server, MCP transports
 
-LongMemory is a cognitive memory engine for LLM applications and autonomous agents.
-
-- Durable local-first storage with SQLite
-- Immutable content, provenance, and temporal truth
-- Strict, historical, associative, grounded, and multilingual recall
-- Explainable evidence selection and token-bounded context
-- Governed project memory, Skills, Chat Memory, LLM-Wiki, and CodeGraph
-- One TypeScript engine across npm, CLI, HTTP, MCP, and VS Code
-- Native integrations for agent hosts, automation tools, and Python frameworks
-
-Your model stays stateless. **Your application stops being amnesiac.**
+Your model stays stateless. **Your agent stops being amnesiac.**
 
 ---
 
-## 1. Use It in 10 Seconds
-
-### Install as a library
+## 1. Install
 
 ```bash
 npm install longmemory
+# or
+pnpm add longmemory
 ```
+
+Requires Node.js >= 20. Native dependencies (`better-sqlite3`) compile on install.
+
+---
+
+## 2. Use as a library
 
 ```ts
 import { createMemory } from 'longmemory';
 
-const memory = await createMemory();
+// In-process, no external service
+const memory = createMemory({
+  store: 'memory',                  // 'memory' | 'sqlite'
+  db_path: './project-memory.db',   // only when store='sqlite'
+  tenant_id: 'my-project',
+  user_id: 'agent-runtime',
+  default_world: 'project-knowledge',
+  max_context_tokens: 4096,
+});
+
+// Write
 await memory.ingest({
-    user_id: 'alice',
-    text: 'I prefer TypeScript for backend services',
+  text: 'User prefers TypeScript for backend services',
+  world: 'project-knowledge',
+  source: { id: 'chat', kind: 'manual', reliability: 0.9 },
 });
 
-const result = await memory.recall({
-    text: 'What language does Alice prefer?',
-    mode: 'strict',
+// Recall (4 modes)
+const strict = await memory.recall({
+  text: 'What language does the user prefer?',
+  mode: 'strict',
+  k: 10,
+  token_budget: 2048,
 });
 
-console.log(result);
+// Maintenance
+await memory.runDecay({ limit: 256 });
+await memory.reinforce(ingest.node.id, { amount: 0.3 });
+
 await memory.close();
 ```
 
-No service or external database is required for in-memory use.
+The same instance is safe to share across multiple agent calls — all state lives in memory and optional SQLite.
 
-### Persist with SQLite
+---
+
+## 3. Project-level pattern
+
+For agent projects, scope memory to the project and let multiple agents share it:
 
 ```ts
-const memory = await createMemory({
-    store: 'sqlite',
-    db_path: './longmemory.db',
-    tenant_id: 'acme',
-    user_id: 'alice',
+import { createMemory } from 'longmemory';
+
+export const projectMemory = createMemory({
+  store: 'sqlite',
+  db_path: './.longmemory/project.db',
+  tenant_id: 'my-agent-project',
+  user_id: 'system',
+  default_world: 'project-knowledge',
+  enable_consolidation: true,
 });
-```
 
-Reopening the same database restores nodes, worlds, entities, edges, temporal history, grounding, and lifecycle state.
+export async function remember(text: string, source: string) {
+  return projectMemory.ingest({
+    text,
+    source: { id: source, kind: 'api', reliability: 0.8 },
+  });
+}
 
-### Install the CLI
-
-```bash
-npm install --global longmemory
-longmemory init
-longmemory recall "current project priorities" --mode associative
-```
-
-### Call a self-hosted server from Python
-
-```bash
-pip install longmemory-sdk
-```
-
-```python
-from longmemory import LongMemory
-
-memory = LongMemory(
-    "http://127.0.0.1:7331",
-    api_key="change-me",
-    user_id="alice",
-)
-
-memory.ingest("I prefer TypeScript")
-result = memory.recall("What language do I prefer?", mode="strict")
-```
-
-The Python package is a zero-dependency HTTP client. The Hydrograph engine remains in the self-hosted TypeScript service. See [docs/python-sdk.md](docs/python-sdk.md).
-
----
-
-## 2. Run as a Service
-
-### From source
-
-```bash
-git clone https://github.com/CaviraOSS/LongMemory.git
-cd LongMemory
-corepack enable
-pnpm install --frozen-lockfile
-pnpm build
-pnpm start
-```
-
-The API listens on `http://127.0.0.1:7331` by default.
-
-### Docker
-
-```bash
-docker run --rm \
-  -p 7331:7331 \
-  -v longmemory-data:/data \
-  -e LONGMEMORY_API_KEY=change-me \
-  ghcr.io/caviraoss/longmemory:latest
-```
-
-### Docker Compose
-
-```bash
-cp .env.example .env
-docker compose up --build -d longmemory
-```
-
-- API and MCP: `http://127.0.0.1:7331`
-- Health: `http://127.0.0.1:7331/health`
-
----
-
-## 3. Why LongMemory
-
-Most systems called memory are retrieval pipelines:
-
-1. Split text into chunks.
-2. Embed the chunks.
-3. Return the nearest vectors.
-
-That does not establish what was true at a particular time, whether a new fact superseded an old one, which source is authoritative, who may see it, or why a result belongs in context.
-
-LongMemory models those concerns directly:
-
-- **Temporal truth:** recorded time and valid time are separate.
-- **Immutable memory:** content, vectors, hashes, and provenance are not rewritten by recall or decay.
-- **Executable graph:** typed relationships participate in recall and explanation.
-- **Governance:** project, tenant, user, team, role, agent, task, and framework scope are enforced.
-- **Lifecycle:** deterministic decay, explicit reinforcement, consolidation, compression, and reconsolidation.
-- **Evidence:** recall is bounded by relevance, contradictions, grounding, permissions, and token cost.
-
-See [Why.md](Why.md) for the design rationale.
-
----
-
-## 4. Recall Modes
-
-```ts
-const strict = await memory.recall({
-    text: 'What is the current deployment region?',
+export async function recallContext(query: string, budget = 2048) {
+  const result = await projectMemory.recall({
+    text: query,
     mode: 'strict',
-});
-
-const historical = await memory.recall({
-    text: 'What was the deployment region in January?',
-    mode: 'historical',
-    valid_time: Date.UTC(2026, 0, 15),
-});
-
-const associative = await memory.recall({
-    text: 'Incidents related to the payment migration',
-    mode: 'associative',
-});
-
-const grounded = await memory.recall({
-    text: 'Which production endpoint is currently live?',
-    mode: 'world_grounded',
-});
+    token_budget: budget,
+  });
+  // adapt to your agent's context shape
+  return result;
+}
 ```
-
-Strict recall applies temporal, contradiction, contract, confidence, and grounding gates. Historical recall preserves superseded truth. Associative recall follows semantic, lexical, entity, activation, and graph signals. World-grounded recall requires current external evidence.
 
 ---
 
-## 5. Features
+## 4. Run as a local HTTP server (optional)
 
-- **Hydrograph memory substrate** with immutable nodes, executable edges, worlds, entities, facets, and traces.
-- **Temporal reasoning** with point-in-time truth, event ordering, supersession, and stale-evidence controls.
-- **Multilingual memory** with script detection, code switching, transliteration, and cross-language embeddings.
-- **Project memory** for architecture, decisions, tasks, conventions, failures, handoffs, and code impact.
-- **Governed assets** for Chat Memory, Skills, LLM-Wiki, and CodeGraph with lifecycle and ACL policy.
-- **Session porter** for Claude Code, Codex, OpenCode, Gemini CLI, Copilot Chat, Cline, and raw harness logs.
-- **Connectors** for repositories, local files, Markdown, web content, feeds, cloud documents, and provider APIs.
-- **Embeddings** through OpenAI-compatible APIs, Gemini, AWS Bedrock, Ollama, Siray, and local HTTP models.
-- **Operational surfaces** through HTTP, MCP, VS Code, n8n, and framework-native MCP clients.
-- **Auditable benchmarks** for LongMemEval, LoCoMo, BEAM, retrieval quality, temporal behavior, and latency.
-
----
-
-## 6. MCP and Agent Integrations
-
-Start local stdio MCP:
-
-```bash
-longmemory mcp --db .longmemory/project.db --project current
-```
-
-Expose authenticated Streamable HTTP MCP:
-
-```bash
-LONGMEMORY_API_KEY=change-me longmemory serve --mcp-http
-```
-
-LongMemory exposes 13 high-level governed tools plus readable resources and agent workflow prompts. Tool arguments cannot override server-bound runtime identity.
-
-Installable integrations include:
-
-- Claude Code plugin
-- Codex and ChatGPT desktop plugin
-- Gemini CLI extension
-- Agent Plugins 1.0 bundle for OpenClaw and compatible hosts
-- n8n community node usable as an AI Agent tool
-- Cline, Continue, and LibreChat configuration packs
-- Dify and Flowise native MCP setup
-- CrewAI, AutoGen, LangGraph/LangChain, OpenAI Agents SDK, and PydanticAI examples
-
-See [integrations/README.md](integrations/README.md) and [docs/mcp.md](docs/mcp.md).
-
----
-
-## 7. Temporal and Project Memory
+Useful when multiple processes need to share memory:
 
 ```ts
-import { createProjectMemory } from 'longmemory';
+// In your project
+import { createServer } from 'node:http';
+import { create_long_memory_server } from 'longmemory/server';
 
-const projects = await createProjectMemory({
-    tenant_id: 'cavira',
-    organization_id: 'CaviraOSS',
-    project_id: 'longmemory',
-    name: 'LongMemory',
-    store: 'sqlite',
-    db_path: './longmemory.db',
+const server = create_long_memory_server({
+  memory: createMemory({ store: 'sqlite', db_path: './shared.db' }),
 });
-
-await projects.ingestProjectEvent('longmemory', {
-    kind: 'decision',
-    topic: 'persistence',
-    text: 'Use SQLite for local-first persistence',
-    source_type: 'architecture_note',
-});
-
-const context = await projects.getProjectContext('longmemory', 'prepare the next release');
+server.listen(7331, '127.0.0.1');
 ```
 
-Project context combines relevant architecture, current decisions, open tasks, failures, code facts, matched Skills, conflicts, and governed asset loadouts under one token budget.
-
----
-
-## 8. CLI
+Or run the bundled binary:
 
 ```bash
-longmemory init
-longmemory tui
-longmemory status --memories 20 --json
-longmemory ingest "Remember the rollback procedure" --type procedure
-longmemory recall "What is the rollback procedure?" --mode associative
-longmemory memory list --limit 50
-longmemory project context "prepare the next release"
-longmemory maintenance decay --all
-longmemory maintenance reinforce <memory-id>
-longmemory skill match "run the release checklist" --agent reviewer
-longmemory asset loadout "prepare the release" --agent reviewer --framework codex
-longmemory code impact createMemory
-longmemory detect
-longmemory session discover --from claude-code
-longmemory port --from claude-code --to longmemory --all
-longmemory session wiki --from gemini-cli --all --name "Project knowledge"
-longmemory serve --mcp-http
+npx longmemory serve
+# or after build:
+node node_modules/longmemory/dist/server/index.js
 ```
 
-Finite commands emit stable JSON outside a TTY or when `--json` is supplied. The session porter reads supported coding-agent stores without modifying them. See [docs/cli.md](docs/cli.md).
+REST routes are documented in [`docs/api.md`](docs/api.md).
 
 ---
 
-## 9. VS Code
+## 5. Run as a local MCP server (optional)
 
-The VS Code extension provides an activity-bar browser, status bar, recall, project context, explanation, reinforcement, explicit decay, session import, and reviewed AI-change capture.
+For agents that speak the Model Context Protocol:
 
 ```bash
-pnpm extension:package
+npx longmemory mcp
+# or after build:
+node node_modules/longmemory/dist/cli/index.js mcp
 ```
 
-The generated package is `apps/vscode-extension/longmemory-vscode-0.2.0.vsix`.
+See [`docs/mcp.md`](docs/mcp.md).
 
 ---
 
-## 10. Architecture
+## 6. Recall modes
 
-```mermaid
-graph TB
-  INPUT[Events, documents, sessions] --> INGEST[Immutable ingest pipeline]
-  INGEST --> GRAPH[(Hydrograph)]
-  GRAPH --> STRICT[Strict and historical recall]
-  GRAPH --> ASSOC[Associative recall]
-  GRAPH --> GROUND[World-grounded recall]
-  GRAPH --> PROJECT[Project memory and governed assets]
-  GRAPH --> SQLITE[(SQLite)]
-  STRICT --> CONTEXT[Explainable bounded context]
-  ASSOC --> CONTEXT
-  GROUND --> CONTEXT
-  PROJECT --> MCP[MCP tools, resources, prompts]
-  CONTEXT --> API[Library, CLI, HTTP]
-  MCP --> AGENTS[Agents, IDEs, automation]
-  API --> UI[VS Code and HTTP/MCP clients]
-```
+| Mode | Purpose | When to use |
+|------|---------|-------------|
+| `strict` | High-confidence direct recall | Default; "what is true now" |
+| `historical` | Time-travel through versions | "what was the API endpoint in March?" |
+| `associative` | Graph-walk across related entities | "incidents related to the migration" |
+| `world_grounded` | Requires external source citations | "which endpoint is live, with proof?" |
 
-Read [ARCHITECTURE.md](ARCHITECTURE.md) and [docs/architecture.md](docs/architecture.md) for subsystem details.
+All modes return explainable evidence with token-bounded context. See [`docs/strict-recall.md`](docs/strict-recall.md), [`docs/historical-recall.md`](docs/historical-recall.md), [`docs/associative-recall.md`](docs/associative-recall.md), [`docs/world-grounded-recall.md`](docs/world-grounded-recall.md).
 
 ---
 
-## 11. Deployment Options
+## 7. Core invariants
 
-| Platform       | Configuration          | What it deploys                           |
-| -------------- | ---------------------- | ----------------------------------------- |
-| Docker         | `Dockerfile`           | API and Streamable HTTP MCP               |
-| Docker Compose | `docker-compose.yml`   | API/MCP service                           |
-| Heroku         | `app.json`             | Containerized API/MCP                     |
-| Railway        | `railway.json`         | Containerized API/MCP                     |
-| Render         | `render.yaml`          | API/MCP with persistent disk              |
-| DigitalOcean   | `.do/spec.yaml`        | App Platform API/MCP service              |
-| Windows        | `start-longmemory.ps1` | Background local API/MCP process          |
+1. Memory content and provenance are immutable; mutable lifecycle state is stored separately.
+2. Recorded time and valid time are distinct.
+3. Project, tenant, user, agent, and framework identity are enforced by the runtime.
+4. Recall is read-only and token bounded.
+5. Deny rules override grants for governed assets.
+6. SQLite is the local durable store; in-memory storage is available for embedded use.
 
-For hosted API deployments, set `LONGMEMORY_API_KEY`, mount persistent storage at `/data`, and terminate TLS at the platform edge.
+See [`docs/invariants.md`](docs/invariants.md).
 
 ---
 
-## 12. Benchmarks
+## 8. Configuration
 
-```bash
-pnpm bench
-pnpm bench:ci
-pnpm bench:full
-```
+LongMemory reads `LONGMEMORY_*` environment variables (see [`.env.example`](.env.example)). Library use only needs the engine options passed to `createMemory()` — env vars are only used by the bundled server/CLI.
 
-The benchmark harness publishes explicit manifests, dataset completion, evidence metrics, answer judgments, temporal categories, latency percentiles, and N/A reasons. Official scorecards fail closed on incomplete datasets or semantic embedding fallback. See [benchmarks/README.md](benchmarks/README.md).
+Embedding providers (`openai`, `gemini`, `aws`, `ollama`, `local`, `siray`, `synthetic`) are pluggable; the default `synthetic` is deterministic and dependency-free.
 
 ---
 
-## 13. Migration
+## 9. Reference
 
-Import supported SQLite, JSON, or JSONL memory:
-
-```bash
-longmemory migrate \
-  --from ./legacy.db \
-  --to ./longmemory.db \
-  --report ./migration-report.json
-```
-
-Import coding-agent conversations as governed Chat Memory:
-
-```bash
-longmemory port --from codex --to longmemory --all
-```
-
-See [MIGRATION.md](MIGRATION.md) and [docs/migration.md](docs/migration.md).
-
-Legacy package migration:
-
-```bash
-npm uninstall openmemory-js && npm install longmemory
-pip uninstall openmemory-py && pip install longmemory-sdk
-```
-
-`openmemory-js@2` and `openmemory-py@2` are forwarding bridges for existing installations. New applications should use `longmemory` and `longmemory-sdk` directly. PyPI's unrelated `longmemory` name is owned by another project, so the official distribution is `longmemory-sdk` while the import remains `longmemory`.
+- [`Why.md`](Why.md) — design rationale
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — subsystem overview
+- [`docs/`](docs/) — 30+ topic documents (recall modes, edges, grounding, ingestion, etc.)
 
 ---
 
-## 14. Release and Operations
+## 10. License
 
-```bash
-corepack enable
-pnpm install --frozen-lockfile
-pnpm release:check
-pnpm pack
-pnpm extension:package
-```
-
-`release:check` validates branding, types, integration manifests, the benchmark smoke gate, the root build, and the extension build.
-
-Useful Make targets:
-
-```bash
-make install
-make build
-make check
-make docker-up
-```
-
----
-
-## 15. Security
-
-LongMemory is local-first, but network deployment still requires explicit controls:
-
-- Protect API and MCP routes with `LONGMEMORY_API_KEY`.
-- Restrict allowed origins and terminate TLS at the edge.
-- Keep connector and embedding credentials outside repository files.
-- Treat recalled content as untrusted evidence, not authorization.
-- Preserve server-bound user, project, agent, and framework identity.
-
-Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
-
----
-
-## 16. Contributing
-
-Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md), [GOVERNANCE.md](GOVERNANCE.md), and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before contributing.
-
-- Issues: https://github.com/CaviraOSS/LongMemory/issues
-- Discussions: https://github.com/CaviraOSS/LongMemory/discussions
-- Changelog: [CHANGELOG.md](CHANGELOG.md)
-
----
-
-## 17. License
-
-LongMemory is licensed under the [Apache License 2.0](LICENSE). The separately
-published n8n community node uses MIT as required by n8n's strict package
-validator.
-
-## Contributors
-
-<!-- readme: contributors -start -->
-<table>
-	<tbody>
-		<tr>
-            <td align="center">
-                <a href="https://github.com/nullure">
-                    <img src="https://avatars.githubusercontent.com/u/81895400?v=4" width="100;" alt="nullure"/>
-                    <br />
-                    <sub><b>Morven</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/dontbanmeplz">
-                    <img src="https://avatars.githubusercontent.com/u/59851616?v=4" width="100;" alt="dontbanmeplz"/>
-                    <br />
-                    <sub><b>Chis</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/amihos">
-                    <img src="https://avatars.githubusercontent.com/u/35190548?v=4" width="100;" alt="amihos"/>
-                    <br />
-                    <sub><b>Hossein Amirkhalili</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/DKB0512">
-                    <img src="https://avatars.githubusercontent.com/u/23116307?v=4" width="100;" alt="DKB0512"/>
-                    <br />
-                    <sub><b>DKB</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/stevo1403">
-                    <img src="https://avatars.githubusercontent.com/u/34807365?v=4" width="100;" alt="stevo1403"/>
-                    <br />
-                    <sub><b>Stephen Adebayo</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/mameikagou">
-                    <img src="https://avatars.githubusercontent.com/u/116348059?v=4" width="100;" alt="mameikagou"/>
-                    <br />
-                    <sub><b>mrlonely</b></sub>
-                </a>
-            </td>
-		</tr>
-		<tr>
-            <td align="center">
-                <a href="https://github.com/haosenwang1018">
-                    <img src="https://avatars.githubusercontent.com/u/167664334?v=4" width="100;" alt="haosenwang1018"/>
-                    <br />
-                    <sub><b>Sense_wang</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/recabasic">
-                    <img src="https://avatars.githubusercontent.com/u/102372274?v=4" width="100;" alt="recabasic"/>
-                    <br />
-                    <sub><b>Elvoro</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/zfaustk">
-                    <img src="https://avatars.githubusercontent.com/u/4340287?v=4" width="100;" alt="zfaustk"/>
-                    <br />
-                    <sub><b>Clio</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/suyua9">
-                    <img src="https://avatars.githubusercontent.com/u/273297082?v=4" width="100;" alt="suyua9"/>
-                    <br />
-                    <sub><b>suyua9</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/vincenzopalazzo">
-                    <img src="https://avatars.githubusercontent.com/u/17150045?v=4" width="100;" alt="vincenzopalazzo"/>
-                    <br />
-                    <sub><b>Vincenzo Palazzo</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/msris108">
-                    <img src="https://avatars.githubusercontent.com/u/43115330?v=4" width="100;" alt="msris108"/>
-                    <br />
-                    <sub><b>Sriram M</b></sub>
-                </a>
-            </td>
-		</tr>
-		<tr>
-            <td align="center">
-                <a href="https://github.com/fparrav">
-                    <img src="https://avatars.githubusercontent.com/u/9319430?v=4" width="100;" alt="fparrav"/>
-                    <br />
-                    <sub><b>Felipe Parra</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/DoKoB0512">
-                    <img src="https://avatars.githubusercontent.com/u/123281216?v=4" width="100;" alt="DoKoB0512"/>
-                    <br />
-                    <sub><b>DoKoB0512</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/whiterabb17">
-                    <img src="https://avatars.githubusercontent.com/u/90134688?v=4" width="100;" alt="whiterabb17"/>
-                    <br />
-                    <sub><b>MistrHyde</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/octo-patch">
-                    <img src="https://avatars.githubusercontent.com/u/266937838?v=4" width="100;" alt="octo-patch"/>
-                    <br />
-                    <sub><b>Octopus</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/therexone">
-                    <img src="https://avatars.githubusercontent.com/u/27387245?v=4" width="100;" alt="therexone"/>
-                    <br />
-                    <sub><b>Ayush Singh</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/kishan0725">
-                    <img src="https://avatars.githubusercontent.com/u/36665975?v=4" width="100;" alt="kishan0725"/>
-                    <br />
-                    <sub><b>Kishan Lal</b></sub>
-                </a>
-            </td>
-		</tr>
-		<tr>
-            <td align="center">
-                <a href="https://github.com/pc-quiknode">
-                    <img src="https://avatars.githubusercontent.com/u/126496711?v=4" width="100;" alt="pc-quiknode"/>
-                    <br />
-                    <sub><b>Peter Chung</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/muhammad-fiaz">
-                    <img src="https://avatars.githubusercontent.com/u/75434191?v=4" width="100;" alt="muhammad-fiaz"/>
-                    <br />
-                    <sub><b>Muhammad Fiaz</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/jasonkneen">
-                    <img src="https://avatars.githubusercontent.com/u/502002?v=4" width="100;" alt="jasonkneen"/>
-                    <br />
-                    <sub><b>Jason Kneen</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/Hchunjun">
-                    <img src="https://avatars.githubusercontent.com/u/11238835?v=4" width="100;" alt="Hchunjun"/>
-                    <br />
-                    <sub><b>shan</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/naabakkcrypto">
-                    <img src="https://avatars.githubusercontent.com/u/258882739?v=4" width="100;" alt="naabakkcrypto"/>
-                    <br />
-                    <sub><b>Naabakk</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/mikemikimike">
-                    <img src="https://avatars.githubusercontent.com/u/186855910?v=4" width="100;" alt="mikemikimike"/>
-                    <br />
-                    <sub><b>mikemikimike</b></sub>
-                </a>
-            </td>
-		</tr>
-		<tr>
-            <td align="center">
-                <a href="https://github.com/mgajewskik">
-                    <img src="https://avatars.githubusercontent.com/u/47600161?v=4" width="100;" alt="mgajewskik"/>
-                    <br />
-                    <sub><b>Maciej Gajewski</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/ajitam">
-                    <img src="https://avatars.githubusercontent.com/u/672661?v=4" width="100;" alt="ajitam"/>
-                    <br />
-                    <sub><b>Matija Urh</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/machj8968-lab">
-                    <img src="https://avatars.githubusercontent.com/u/274563644?v=4" width="100;" alt="machj8968-lab"/>
-                    <br />
-                    <sub><b>machj8968-lab</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/buyua9">
-                    <img src="https://avatars.githubusercontent.com/u/274236111?v=4" width="100;" alt="buyua9"/>
-                    <br />
-                    <sub><b>buyua9</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/aziham">
-                    <img src="https://avatars.githubusercontent.com/u/94932043?v=4" width="100;" alt="aziham"/>
-                    <br />
-                    <sub><b>Hamza</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/oantoshchenko">
-                    <img src="https://avatars.githubusercontent.com/u/1749531?v=4" width="100;" alt="oantoshchenko"/>
-                    <br />
-                    <sub><b>Oleksandr Antoshchenko</b></sub>
-                </a>
-            </td>
-		</tr>
-		<tr>
-            <td align="center">
-                <a href="https://github.com/lwsinclair">
-                    <img src="https://avatars.githubusercontent.com/u/2829939?v=4" width="100;" alt="lwsinclair"/>
-                    <br />
-                    <sub><b>Lawrence Sinclair</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/jungdaesuh">
-                    <img src="https://avatars.githubusercontent.com/u/78460559?v=4" width="100;" alt="jungdaesuh"/>
-                    <br />
-                    <sub><b>jungdaesuh</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/josephgoksu">
-                    <img src="https://avatars.githubusercontent.com/u/6523823?v=4" width="100;" alt="josephgoksu"/>
-                    <br />
-                    <sub><b>Joseph Goksu</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/EikoocS">
-                    <img src="https://avatars.githubusercontent.com/u/80829508?v=4" width="100;" alt="EikoocS"/>
-                    <br />
-                    <sub><b>EikoocS</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/Dhravya">
-                    <img src="https://avatars.githubusercontent.com/u/63950637?v=4" width="100;" alt="Dhravya"/>
-                    <br />
-                    <sub><b>Dhravya Shah</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/dflor003">
-                    <img src="https://avatars.githubusercontent.com/u/103017?v=4" width="100;" alt="dflor003"/>
-                    <br />
-                    <sub><b>Danil Flores</b></sub>
-                </a>
-            </td>
-		</tr>
-		<tr>
-            <td align="center">
-                <a href="https://github.com/DAESA24">
-                    <img src="https://avatars.githubusercontent.com/u/173488786?v=4" width="100;" alt="DAESA24"/>
-                    <br />
-                    <sub><b>DAESA24</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/ammesonb">
-                    <img src="https://avatars.githubusercontent.com/u/2522710?v=4" width="100;" alt="ammesonb"/>
-                    <br />
-                    <sub><b>Brett Ammeson</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/auto-pr-bot">
-                    <img src="https://avatars.githubusercontent.com/u/245575329?v=4" width="100;" alt="auto-pr-bot"/>
-                    <br />
-                    <sub><b>auto-pr-bot</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/Anush008">
-                    <img src="https://avatars.githubusercontent.com/u/46051506?v=4" width="100;" alt="Anush008"/>
-                    <br />
-                    <sub><b>Anush</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/annelchavez-11594">
-                    <img src="https://avatars.githubusercontent.com/u/271067077?v=4" width="100;" alt="annelchavez-11594"/>
-                    <br />
-                    <sub><b>Annel Chavez</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/atao2004">
-                    <img src="https://avatars.githubusercontent.com/u/148929819?v=4" width="100;" alt="atao2004"/>
-                    <br />
-                    <sub><b>Anna Tao</b></sub>
-                </a>
-            </td>
-		</tr>
-	<tbody>
-</table>
-<!-- readme: contributors -end -->
+Apache-2.0. See [`LICENSE`](LICENSE).

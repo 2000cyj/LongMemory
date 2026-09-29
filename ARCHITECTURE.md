@@ -44,8 +44,7 @@ graph LR
 - `src/cli`: deterministic CLI and interactive session porter.
 - `src/server`: authenticated HTTP API and Streamable HTTP MCP endpoint.
 - `src/mcp`: 13 governed tools, resources, prompts, and transports.
-- `apps/vscode-extension`: native VS Code client over stable CLI JSON.
 - `integrations`: host-native plugins, MCP configurations, and framework examples.
-- `benchmarks`: auditable LongMemEval, LoCoMo, BEAM, and smoke harness.
+- `docs`: subsystem design documents and reference material.
 
 Detailed subsystem documents live in [`docs/`](docs/architecture.md).

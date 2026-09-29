@@ -110,5 +110,4 @@ The benchmark also gates:
 Run it with:
 
 ```powershell
-pnpm exec tsx benchmarks/src/cli.ts --quick --only=compression --ci
 ```

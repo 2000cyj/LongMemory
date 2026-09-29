@@ -12,15 +12,8 @@
 
 node_modules/
 dist/
-__pycache__/
-*.py[cod]
-*.egg-info/
-*.egg-info
 .env
 *.log
 tmp
-benchmarks/data/external/**/*.json
-benchmarks/data/*.db*
-benchmarks/runs/
 *.env
 .longmemory

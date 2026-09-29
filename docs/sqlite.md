@@ -159,5 +159,4 @@ executes a supersession transaction, verifies current/historical/strict truth,
 runs integrity checks, and gates indexed strict-candidate p95 at 25 ms.
 
 ```powershell
-pnpm exec tsx benchmarks/src/cli.ts --quick --only=sqlite --ci
 ```

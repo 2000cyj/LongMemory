@@ -17,24 +17,19 @@
 ## 1.0 release surface
 
 - Remove active unit/integration test suites and Vitest from the release tree;
-  reject future test artifacts in `tools/check-release-files.mjs`.
-- Preserve deterministic validation through typechecks, official n8n/Claude
-  checks, manifest parsing, benchmark smoke gates, clean npm tarball inspection,
-  and live API/MCP health checks.
-- Ship a root non-root Docker image and platform manifests for Compose, Heroku,
-  Railway, Render, and DigitalOcean hosting. Stateful API platforms must persist
-  `/data` and accept `PORT` when assigned by the host.
-- Publish `longmemory@1.0.0` under Apache-2.0 with npm provenance; publish the
-  n8n package under validator-required MIT and the VS Code extension with its
-  Apache license included.
+  reject future test artifacts.
+- Ship a published npm package, a local CLI, a local HTTP server, and an MCP
+  transport. Validation uses TypeScript checks and unit tests.
+- Project-level deployments run from a local npm install or a single long-running
+  process started by the user's runtime (systemd, pm2, launchd, etc.).
+- Publish `longmemory@1.0.0` under Apache-2.0 with npm provenance.
 
 ## LongMemory product rename
 
 - Rename product text, package/bin identifiers, environment prefixes, command
   namespaces, routes, integration IDs, filenames, and active directories from
   the former name to LongMemory without preserving compatibility aliases.
-- Enforce the rename and language-aware Cavira headers with
-  `pnpm branding:check`; keep the migration idempotent in `tools/branding.mjs`.
+- Keep the product text consistent and language-aware across active source files.
 - Do not inject comments into strict JSON, binary/generated metadata, binary
   assets, or n8n's byte-exact ESLint config. Preserve historical `tmp/` archives
   unchanged so benchmark and implementation comparisons remain reproducible.
@@ -122,16 +117,12 @@
   with identical evidence materially changed LongMemEval and update verdicts;
   require repeats or a deterministic evaluation endpoint for release claims.
 
-## Installed CLI and extension shell
+## Installed CLI and shell
 
 - Canonicalize CLI module and argv paths before main detection so npm junctions
   and symlinked development installs execute instead of silently returning.
 - Route bare interactive `longmemory` to the five-step TUI; retain bare non-TTY
   status JSON and explicit `status` for automation.
-- Activate the CaviraOSS extension at startup and keep an always-visible
-  right-side Memory manager; show recording/review activity separately.
-- Remove the obsolete Nullure extension because duplicate `longmemory.quickNote`
-  commands and shared settings prevent deterministic activation.
 
 ## External plugins
 

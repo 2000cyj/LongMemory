@@ -166,7 +166,7 @@ The CLI resolves the entity ID through the facade and requests its historical ti
 longmemory bench --pretty
 ```
 
-This runs the benchmark checks shipped inside the published package and exits nonzero when a check fails. The full development harness remains available through `pnpm bench` and `pnpm bench:ci`.
+The bench command ships inside the published package for quick smoke checks.
 
 ## Reusable Skills
 
