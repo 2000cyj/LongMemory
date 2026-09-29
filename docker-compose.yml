@@ -53,21 +53,6 @@ services:
             retries: 3
             start_period: 20s
 
-    dashboard:
-        profiles: ['ui']
-        build:
-            context: ./dashboard
-            dockerfile: Dockerfile
-        ports:
-            - '${LONGMEMORY_DASHBOARD_PORT:-3000}:3000'
-        environment:
-            LONGMEMORY_API_URL: http://longmemory:7331
-            LONGMEMORY_API_KEY: ${LONGMEMORY_API_KEY:-}
-        depends_on:
-            longmemory:
-                condition: service_healthy
-        restart: unless-stopped
-
 volumes:
     longmemory_data:
         name: longmemory_data

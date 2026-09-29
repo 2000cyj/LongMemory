@@ -10,7 +10,7 @@
 #  file  : Makefile
 #  usage : supports LongMemory makefile
 
-.PHONY: help install build check benchmark serve dashboard extension package clean docker-build docker-up docker-down
+.PHONY: help install build check benchmark serve extension package clean docker-build docker-up docker-down
 
 help:
 	@echo "LongMemory release commands"
@@ -19,7 +19,6 @@ help:
 	@echo "  make check         Run release checks without test suites"
 	@echo "  make benchmark     Run the deterministic smoke benchmark gate"
 	@echo "  make docker-up     Start API and MCP with Docker Compose"
-	@echo "  make dashboard     Start API, MCP, and dashboard"
 
 install:
 	corepack enable
@@ -50,11 +49,8 @@ docker-build:
 docker-up:
 	docker compose up --build -d longmemory
 
-dashboard:
-	docker compose --profile ui up --build -d
-
 docker-down:
 	docker compose down
 
 clean:
-	rm -rf dist dashboard/.next apps/vscode-extension/dist integrations/n8n-nodes-longmemory/dist
+	rm -rf dist apps/vscode-extension/dist integrations/n8n-nodes-longmemory/dist

@@ -40,7 +40,6 @@ jobs:
                   node-version: 22
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
-            - run: npm --prefix dashboard ci
             - run: pnpm release:check
             - run: npm install --global @anthropic-ai/claude-code
             - run: pnpm integration:claude:validate

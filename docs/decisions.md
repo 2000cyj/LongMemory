@@ -19,11 +19,11 @@
 - Remove active unit/integration test suites and Vitest from the release tree;
   reject future test artifacts in `tools/check-release-files.mjs`.
 - Preserve deterministic validation through typechecks, official n8n/Claude
-  checks, manifest parsing, benchmark smoke gates, dashboard audit/build, clean
-  npm tarball inspection, and live API/MCP health checks.
+  checks, manifest parsing, benchmark smoke gates, clean npm tarball inspection,
+  and live API/MCP health checks.
 - Ship a root non-root Docker image and platform manifests for Compose, Heroku,
-  Railway, Render, DigitalOcean, and Vercel dashboard hosting. Stateful API
-  platforms must persist `/data` and accept `PORT` when assigned by the host.
+  Railway, Render, and DigitalOcean hosting. Stateful API platforms must persist
+  `/data` and accept `PORT` when assigned by the host.
 - Publish `longmemory@1.0.0` under Apache-2.0 with npm provenance; publish the
   n8n package under validator-required MIT and the VS Code extension with its
   Apache license included.

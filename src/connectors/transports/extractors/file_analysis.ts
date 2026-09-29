@@ -35,7 +35,7 @@ export function is_binary(data: Uint8Array): boolean {
 function role_for(path: string, language: string, generated: boolean): file_role {
     const clean = path.replace(/\\/g, '/').toLowerCase();
     const name = clean.split('/').pop() ?? '';
-    if (generated || /(^|\/)(dist|build|coverage|vendor|node_modules|target|\.next)\//.test(clean)) return generated ? 'generated' : 'vendor';
+    if (generated || /(^|\/)(dist|build|coverage|vendor|node_modules|target)\//.test(clean)) return generated ? 'generated' : 'vendor';
     if (/\.(test|spec|e2e)\.|(^|\/)(__tests__|tests?|specs?|cypress|playwright)\//.test(clean)) return 'test';
     if (/(^|\/)(docs?|adr|rfcs?)\/|\.(md|mdx|rst)$|^(readme|changelog|contributing|license)/.test(clean)) return 'documentation';
     if (/(^|\/)(\.github\/workflows|\.gitlab|\.circleci)\/|^(jenkinsfile|azure-pipelines)|\.(workflow\.ya?ml)$/.test(clean)) return 'workflow';

@@ -24,7 +24,6 @@ on:
             - pnpm-workspace.yaml
             - src/**
             - docs/**
-            - dashboard/**
             - .github/workflows/docker-build.yml
     pull_request:
         branches: [main]

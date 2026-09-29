@@ -14,7 +14,7 @@
 
 # LongMemory architecture
 
-LongMemory is one TypeScript package with a shared Hydrograph engine. Library imports, the CLI, the HTTP server, MCP transports, the dashboard proxy, and integrations all use the same memory semantics.
+LongMemory is one TypeScript package with a shared Hydrograph engine. Library imports, the CLI, the HTTP server, MCP transports, and integrations all use the same memory semantics.
 
 ```mermaid
 graph LR
@@ -26,7 +26,7 @@ graph LR
   P --> M[MCP tools and resources]
   H --> S[SQLite store]
   M --> G[Agents and IDEs]
-  S --> D[Dashboard and API]
+  S --> D[API consumers]
 ```
 
 ## Core invariants
@@ -44,7 +44,6 @@ graph LR
 - `src/cli`: deterministic CLI and interactive session porter.
 - `src/server`: authenticated HTTP API and Streamable HTTP MCP endpoint.
 - `src/mcp`: 13 governed tools, resources, prompts, and transports.
-- `dashboard`: Next.js operational interface.
 - `apps/vscode-extension`: native VS Code client over stable CLI JSON.
 - `integrations`: host-native plugins, MCP configurations, and framework examples.
 - `benchmarks`: auditable LongMemEval, LoCoMo, BEAM, and smoke harness.

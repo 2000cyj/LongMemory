@@ -26,7 +26,7 @@ LongMemory treats those questions as the memory system itself.
 - Deterministic decay and explicit reinforcement without rewriting source truth.
 - Project-scoped decisions, tasks, Skills, Chat Memory, LLM-Wiki, and CodeGraph assets.
 - Explainable evidence selection under token budgets and access policy.
-- One local-first engine across npm, CLI, HTTP, MCP, dashboard, and editor workflows.
+- One local-first engine across npm, CLI, HTTP, MCP, and editor workflows.
 
 ## What LongMemory is not
 

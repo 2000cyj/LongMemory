@@ -21,7 +21,6 @@ const legacy = new RegExp(['open', '[_-]?', 'memory'].join(''), 'i');
 const ignored_dirs = new Set([
     '.git',
     '.longmemory',
-    '.next',
     '__pycache__',
     'data',
     'dist',
@@ -39,7 +38,6 @@ const legacy_docs = new Set([
 ]);
 const no_header = new Set([
     'header.txt',
-    'dashboard/next-env.d.ts',
     'integrations/n8n-nodes-longmemory/eslint.config.mjs',
 ]);
 const binary = new Set([

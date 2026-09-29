@@ -51,12 +51,10 @@ body:
       label: Component
       description: Which part of the application would this feature affect?
       options:
-        - Frontend (React/UI)
         - Backend (API/Server)
         - Database
         - Authentication
         - File Upload
-        - Chat/WebSocket
         - AI/LLM Integration
         - Documentation
         - DevOps/Infrastructure

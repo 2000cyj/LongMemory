@@ -21,7 +21,6 @@ The package, CLI, environment prefix, extension namespace, routes, and integrati
 - npm and CLI: `longmemory`
 - environment: `LONGMEMORY_*`
 - workspace state: `.longmemory/`
-- dashboard proxy: `/api/longmemory`
 - repository: `https://github.com/CaviraOSS/LongMemory`
 
 Application identifiers do not retain runtime aliases; registry migration is handled by temporary compatibility packages.

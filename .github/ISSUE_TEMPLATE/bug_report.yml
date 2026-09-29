@@ -48,12 +48,10 @@ body:
       label: Component
       description: Which part of the application is affected?
       options:
-        - Frontend (React/UI)
         - Backend (API/Server)
         - Database
         - Authentication
         - File Upload
-        - Chat/WebSocket
         - AI/LLM Integration
         - Other
     validations:

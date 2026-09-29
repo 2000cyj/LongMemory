@@ -22,7 +22,7 @@
 [![Container](https://img.shields.io/badge/GHCR-longmemory-2496ED?logo=docker)](https://github.com/CaviraOSS/LongMemory/pkgs/container/longmemory)
 [![License](https://img.shields.io/github/license/CaviraOSS/LongMemory)](LICENSE)
 
-![LongMemory dashboard](.github/longmemory.gif)
+![LongMemory Hydrograph](.github/longmemory.gif)
 
 LongMemory is a cognitive memory engine for LLM applications and autonomous agents.
 
@@ -31,7 +31,7 @@ LongMemory is a cognitive memory engine for LLM applications and autonomous agen
 - Strict, historical, associative, grounded, and multilingual recall
 - Explainable evidence selection and token-bounded context
 - Governed project memory, Skills, Chat Memory, LLM-Wiki, and CodeGraph
-- One TypeScript engine across npm, CLI, HTTP, MCP, dashboard, and VS Code
+- One TypeScript engine across npm, CLI, HTTP, MCP, and VS Code
 - Native integrations for agent hosts, automation tools, and Python frameworks
 
 Your model stays stateless. **Your application stops being amnesiac.**
@@ -142,14 +142,7 @@ cp .env.example .env
 docker compose up --build -d longmemory
 ```
 
-Include the dashboard:
-
-```bash
-docker compose --profile ui up --build -d
-```
-
 - API and MCP: `http://127.0.0.1:7331`
-- Dashboard: `http://127.0.0.1:3000`
 - Health: `http://127.0.0.1:7331/health`
 
 ---
@@ -216,7 +209,7 @@ Strict recall applies temporal, contradiction, contract, confidence, and groundi
 - **Session porter** for Claude Code, Codex, OpenCode, Gemini CLI, Copilot Chat, Cline, and raw harness logs.
 - **Connectors** for repositories, local files, Markdown, web content, feeds, cloud documents, and provider APIs.
 - **Embeddings** through OpenAI-compatible APIs, Gemini, AWS Bedrock, Ollama, Siray, and local HTTP models.
-- **Operational surfaces** through HTTP, MCP, dashboard, VS Code, n8n, and framework-native MCP clients.
+- **Operational surfaces** through HTTP, MCP, VS Code, n8n, and framework-native MCP clients.
 - **Auditable benchmarks** for LongMemEval, LoCoMo, BEAM, retrieval quality, temporal behavior, and latency.
 
 ---
@@ -306,14 +299,7 @@ Finite commands emit stable JSON outside a TTY or when `--json` is supplied. The
 
 ---
 
-## 9. Dashboard and VS Code
-
-The Next.js dashboard provides health, memory browsing, ingestion, search, project selection, activity, decay, settings, timelines, and memory-aware chat through a same-origin API proxy.
-
-```bash
-pnpm --dir dashboard build
-pnpm --dir dashboard start
-```
+## 9. VS Code
 
 The VS Code extension provides an activity-bar browser, status bar, recall, project context, explanation, reinforcement, explicit decay, session import, and reviewed AI-change capture.
 
@@ -342,7 +328,7 @@ graph TB
   PROJECT --> MCP[MCP tools, resources, prompts]
   CONTEXT --> API[Library, CLI, HTTP]
   MCP --> AGENTS[Agents, IDEs, automation]
-  API --> UI[Dashboard and VS Code]
+  API --> UI[VS Code and HTTP/MCP clients]
 ```
 
 Read [ARCHITECTURE.md](ARCHITECTURE.md) and [docs/architecture.md](docs/architecture.md) for subsystem details.
@@ -354,15 +340,14 @@ Read [ARCHITECTURE.md](ARCHITECTURE.md) and [docs/architecture.md](docs/architec
 | Platform       | Configuration          | What it deploys                           |
 | -------------- | ---------------------- | ----------------------------------------- |
 | Docker         | `Dockerfile`           | API and Streamable HTTP MCP               |
-| Docker Compose | `docker-compose.yml`   | API/MCP plus optional dashboard           |
+| Docker Compose | `docker-compose.yml`   | API/MCP service                           |
 | Heroku         | `app.json`             | Containerized API/MCP                     |
 | Railway        | `railway.json`         | Containerized API/MCP                     |
 | Render         | `render.yaml`          | API/MCP with persistent disk              |
 | DigitalOcean   | `.do/spec.yaml`        | App Platform API/MCP service              |
-| Vercel         | `vercel.json`          | Dashboard; configure `LONGMEMORY_API_URL` |
 | Windows        | `start-longmemory.ps1` | Background local API/MCP process          |
 
-For hosted API deployments, set `LONGMEMORY_API_KEY`, mount persistent storage at `/data`, and terminate TLS at the platform edge. Vercel hosts only the stateless dashboard and requires a separately deployed LongMemory API.
+For hosted API deployments, set `LONGMEMORY_API_KEY`, mount persistent storage at `/data`, and terminate TLS at the platform edge.
 
 ---
 
@@ -418,7 +403,7 @@ pnpm pack
 pnpm extension:package
 ```
 
-`release:check` validates branding, types, integration manifests, the benchmark smoke gate, the root build, extension build, and dashboard production build.
+`release:check` validates branding, types, integration manifests, the benchmark smoke gate, the root build, and the extension build.
 
 Useful Make targets:
 
@@ -427,7 +412,6 @@ make install
 make build
 make check
 make docker-up
-make dashboard
 ```
 
 ---

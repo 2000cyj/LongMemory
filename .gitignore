@@ -22,6 +22,5 @@ tmp
 benchmarks/data/external/**/*.json
 benchmarks/data/*.db*
 benchmarks/runs/
-.next
 *.env
 .longmemory

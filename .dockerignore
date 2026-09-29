@@ -13,8 +13,6 @@
 .git
 .github
 .longmemory
-.next
-**/.next
 **/dist
 **/node_modules
 **/*.vsix

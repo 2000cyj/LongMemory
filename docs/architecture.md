@@ -36,7 +36,7 @@ Phase 1 creates the foundation only:
 - acceptance tests
 - benchmark placeholder command
 
-Phase 1 does not include production memory storage, dashboard, hosted service, graph visualization, vector database integration, or external connectors.
+Phase 1 does not include production memory storage, hosted service, graph visualization, vector database integration, or external connectors.
 
 ## Shared engine rule
 

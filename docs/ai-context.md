@@ -20,7 +20,7 @@
   comment syntax. Strict JSON, generated binary metadata, binary assets, the
   header template, and n8n's byte-exact ESLint config are explicit exceptions.
 - LongMemory uses one Hydrograph engine across the library, CLI, server, MCP,
-  dashboard, and VS Code extension.
+  and VS Code extension.
 - The VS Code extension uses stable CLI JSON and workspace project scope; it
   does not duplicate engine behavior.
 - AI code changes are stored as compact redacted patches with provenance and
@@ -54,7 +54,6 @@
   deterministic benchmark smoke gate, dependency audit, production builds,
   live API/MCP smoke checks, and package-content inspection.
 - Deployment files cover Docker, Compose, Heroku, Railway, Render,
-  DigitalOcean, and a Vercel-hosted dashboard. Stateful API deployments require
-  persistent `/data`; Vercel hosts only the dashboard.
+  and DigitalOcean. Stateful API deployments require persistent `/data`.
 - The repository and primary packages use Apache-2.0. The n8n community package
   remains MIT because n8n's strict validator requires it.
