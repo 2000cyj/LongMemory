@@ -1,15 +1,18 @@
 {
     "name": "longmemory",
-    "version": "1.0.0",
-    "description": "LongMemory Hydrograph: durable, temporal, governed project-level memory for Node.js agents.",
+    "version": "2.0.0",
+    "description": "LongMemory: memory engine for Node.js + SQLite. LLM-driven fact extraction, semantic dedup, multi-signal recall with rerank. Ships with built-in MCP server for AI agent integration.",
     "license": "Apache-2.0",
     "keywords": [
         "ai",
         "agents",
         "memory",
-        "mcp",
         "sqlite",
-        "temporal"
+        "llm",
+        "mcp",
+        "model-context-protocol",
+        "semantic-search",
+        "rerank"
     ],
     "engines": {
         "node": ">=20"
@@ -17,56 +20,26 @@
     "type": "module",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
-    "exports": {
-        ".": {
-            "import": "./dist/index.js",
-            "types": "./dist/index.d.ts"
-        },
-        "./mcp": {
-            "import": "./dist/mcp/index.js",
-            "types": "./dist/mcp/index.d.ts"
-        },
-        "./connectors": {
-            "import": "./dist/connectors/index.js",
-            "types": "./dist/connectors/index.d.ts"
-        },
-        "./project": {
-            "import": "./dist/core/project/index.js",
-            "types": "./dist/core/project/index.d.ts"
-        }
-    },
     "bin": {
-        "longmemory": "dist/cli/index.js"
+        "longmemory-mcp": "node --env-file=.env dist/mcp/cli.js"
     },
     "files": [
-        "dist",
-        "README.md",
-        "docs",
-        "LICENSE"
+        "dist"
     ],
     "scripts": {
-        "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && node -e \"const fs=require('fs');fs.mkdirSync('dist/stores/sqlite',{recursive:true});fs.copyFileSync('src/stores/sqlite/schema.sql','dist/stores/sqlite/schema.sql')\"",
-        "start": "node dist/server/index.js",
-        "dev": "node --import tsx src/cli/index.ts status",
-        "serve": "tsx src/server/index.ts",
-        "mcp:stdio": "tsx src/cli/index.ts mcp",
+        "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && node -e \"require('fs').mkdirSync('dist/core/engine',{recursive:true});require('fs').copyFileSync('src/core/engine/schema.sql','dist/core/engine/schema.sql')\"",
+        "start": "node --env-file=.env dist/mcp/cli.js",
         "typecheck": "tsc --noEmit -p tsconfig.json"
     },
     "devDependencies": {
         "@types/better-sqlite3": "^7.6.13",
         "@types/node": "^20.19.25",
-        "@types/turndown": "^5.0.6",
-        "tsx": "^4.20.6",
-        "typescript": "^5.9.3",
-        "yaml": "^2.8.1"
+        "tsx": "^4.23.15",
+        "typescript": "^5.9.3"
     },
     "dependencies": {
-        "@aws-sdk/client-bedrock-runtime": "^3.1093.0",
         "@modelcontextprotocol/sdk": "^1.29.0",
         "better-sqlite3": "^12.11.1",
-        "mammoth": "^1.12.0",
-        "pdf-parse": "^2.4.5",
-        "turndown": "^7.2.4",
-        "zod": "^4.4.3"
+        "zod": "^3.23.8"
     }
 }

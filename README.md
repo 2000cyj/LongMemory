@@ -1,192 +1,213 @@
-# LongMemory
+# longmemory
 
-> **Durable, temporal, governed project-level memory for Node.js agents. Local-first. Immutable by design.**
+> **Memory engine for Node.js + SQLite.** LLM-driven fact extraction, semantic deduplication, multi-signal recall with optional rerank. Ships with built-in **MCP HTTP server** so any AI agent can use it as a memory tool.
 
-A governed memory layer that lets your Node.js agents carry durable state across sessions without surrendering ownership, auditability, or temporal truth.
+A lightweight memory layer for AI agents and applications. Single SQLite file, no external vector database.
 
-- Immutable content with recorded-time and valid-time history
-- Executable typed edges, entities, worlds, grounding, contradiction, and provenance
-- Strict, historical, associative, world-grounded, and multilingual recall
-- Deterministic decay and explicit reinforcement without rewriting source truth
-- Local-first SQLite store; in-memory mode for embedded use
-- One TypeScript package: library import, CLI, HTTP server, MCP transports
-
-Your model stays stateless. **Your agent stops being amnesiac.**
-
----
-
-## 1. Install
+## Install
 
 ```bash
 npm install longmemory
-# or
-pnpm add longmemory
 ```
 
-Requires Node.js >= 20. Native dependencies (`better-sqlite3`) compile on install.
+Requires Node.js ≥ 20.
 
 ---
 
-## 2. Use as a library
+## Option 1 — Use as a library (in-process)
+
+Best when your agent runs in the same Node process.
 
 ```ts
-import { createMemory } from 'longmemory';
+import { LongMemory } from 'longmemory';
 
-// In-process, no external service
-const memory = createMemory({
-  store: 'memory',                  // 'memory' | 'sqlite'
-  db_path: './project-memory.db',   // only when store='sqlite'
-  tenant_id: 'my-project',
-  user_id: 'agent-runtime',
-  default_world: 'project-knowledge',
-  max_context_tokens: 4096,
+const engine = new LongMemory({
+  db_path: './memory.db',
+  llm: yourLLMProviders,        // see "Bring your own LLM"
+  embedding: yourEmbedding,     // see "Bring your own embedding"
+  default_scope: { user_id: 'alice' },
 });
 
-// Write
-await memory.ingest({
-  text: 'User prefers TypeScript for backend services',
-  world: 'project-knowledge',
-  source: { id: 'chat', kind: 'manual', reliability: 0.9 },
+// Add memories (4-step pipeline runs automatically)
+await engine.add('Alice prefers TypeScript for backend work.', {
+  scope: { user_id: 'alice' },
 });
 
-// Recall (4 modes)
-const strict = await memory.recall({
-  text: 'What language does the user prefer?',
-  mode: 'strict',
-  k: 10,
-  token_budget: 2048,
+// Search (4-signal RRF + optional LLM rerank)
+const results = await engine.search({
+  query: 'What does Alice like for backend?',
+  scope: { user_id: 'alice' },
+  top_k: 5,
 });
 
-// Maintenance
-await memory.runDecay({ limit: 256 });
-await memory.reinforce(ingest.node.id, { amount: 0.3 });
-
-await memory.close();
-```
-
-The same instance is safe to share across multiple agent calls — all state lives in memory and optional SQLite.
-
----
-
-## 3. Project-level pattern
-
-For agent projects, scope memory to the project and let multiple agents share it:
-
-```ts
-import { createMemory } from 'longmemory';
-
-export const projectMemory = createMemory({
-  store: 'sqlite',
-  db_path: './.longmemory/project.db',
-  tenant_id: 'my-agent-project',
-  user_id: 'system',
-  default_world: 'project-knowledge',
-  enable_consolidation: true,
-});
-
-export async function remember(text: string, source: string) {
-  return projectMemory.ingest({
-    text,
-    source: { id: source, kind: 'api', reliability: 0.8 },
-  });
-}
-
-export async function recallContext(query: string, budget = 2048) {
-  const result = await projectMemory.recall({
-    text: query,
-    mode: 'strict',
-    token_budget: budget,
-  });
-  // adapt to your agent's context shape
-  return result;
-}
+engine.close();
 ```
 
 ---
 
-## 4. Run as a local HTTP server (optional)
+## Option 2 — Run as MCP HTTP server (for external agents)
 
-Useful when multiple processes need to share memory:
+Best when your agent is in another process / language (Claude Desktop, Cline, Cursor, custom Python agent, etc.).
 
-```ts
-// In your project
-import { createServer } from 'node:http';
-import { create_long_memory_server } from 'longmemory/server';
-
-const server = create_long_memory_server({
-  memory: createMemory({ store: 'sqlite', db_path: './shared.db' }),
-});
-server.listen(7331, '127.0.0.1');
-```
-
-Or run the bundled binary:
+### Start the server
 
 ```bash
-npx longmemory serve
-# or after build:
-node node_modules/longmemory/dist/server/index.js
+# Install LLM API key
+export LONGMEMORY_OPENAI_API_KEY=sk-...
+export LONGMEMORY_OPENAI_BASE_URL=https://api.openai.com/v1   # or Ollama, etc.
+
+# Optional: customize
+export LONGMEMORY_DB_PATH=./memory.db
+export LONGMEMORY_MODEL=gpt-4.1-mini
+export LONGMEMORY_EMBEDDING_MODEL=text-embedding-3-small
+export LONGMEMORY_EMBEDDING_DIM=1536
+export LONGMEMORY_MCP_PORT=7331
+export LONGMEMORY_MCP_HOST=127.0.0.1
+
+# Launch
+npx longmemory-mcp
+# Output: [longmemory-mcp] listening on http://127.0.0.1:7331/mcp
 ```
 
-REST routes are documented in [`docs/api.md`](docs/api.md).
+### 5 MCP tools exposed
 
----
+| Tool | Description |
+|------|-------------|
+| `longmemory_add` | Extract facts (LLM) → dedup (LLM) → embed → store |
+| `longmemory_search` | Query rewrite (LLM) → 4-signal RRF → optional rerank (LLM) |
+| `longmemory_get` | Fetch a single memory by id |
+| `longmemory_list` | List memory ids in a scope |
+| `longmemory_delete` | Delete a memory by id |
 
-## 5. Run as a local MCP server (optional)
+Plus 1 resource: `longmemory://status`
 
-For agents that speak the Model Context Protocol:
+### Configure your MCP client
 
-```bash
-npx longmemory mcp
-# or after build:
-node node_modules/longmemory/dist/cli/index.js mcp
+```json
+{
+  "mcpServers": {
+    "longmemory": {
+      "url": "http://127.0.0.1:7331/mcp",
+      "transport": "http"
+    }
+  }
+}
 ```
 
-See [`docs/mcp.md`](docs/mcp.md).
+Or for stdio-based clients, run `npx longmemory-mcp` as a subprocess.
 
 ---
 
-## 6. Recall modes
+## Bring your own LLM
 
-| Mode | Purpose | When to use |
-|------|---------|-------------|
-| `strict` | High-confidence direct recall | Default; "what is true now" |
-| `historical` | Time-travel through versions | "what was the API endpoint in March?" |
-| `associative` | Graph-walk across related entities | "incidents related to the migration" |
-| `world_grounded` | Requires external source citations | "which endpoint is live, with proof?" |
+The engine needs 5 LLM methods. Default provider works with any OpenAI-compatible endpoint:
 
-All modes return explainable evidence with token-bounded context. See [`docs/strict-recall.md`](docs/strict-recall.md), [`docs/historical-recall.md`](docs/historical-recall.md), [`docs/associative-recall.md`](docs/associative-recall.md), [`docs/world-grounded-recall.md`](docs/world-grounded-recall.md).
+```ts
+import { openai_llm } from 'longmemory/providers/openai';
 
----
+const llm = openai_llm({
+  api_key: process.env.OPENAI_API_KEY!,
+  base_url: 'https://api.openai.com/v1',  // or http://localhost:11434/v1 (Ollama)
+  model: 'gpt-4.1-mini',
+});
+```
 
-## 7. Core invariants
+Works with OpenAI, Azure OpenAI, Ollama, vLLM, LM Studio, etc.
 
-1. Memory content and provenance are immutable; mutable lifecycle state is stored separately.
-2. Recorded time and valid time are distinct.
-3. Project, tenant, user, agent, and framework identity are enforced by the runtime.
-4. Recall is read-only and token bounded.
-5. Deny rules override grants for governed assets.
-6. SQLite is the local durable store; in-memory storage is available for embedded use.
+## Bring your own embedding
 
-See [`docs/invariants.md`](docs/invariants.md).
+```ts
+import { openai_embedding } from 'longmemory/providers/openai';
 
----
+const embedding = openai_embedding({
+  api_key: process.env.OPENAI_API_KEY!,
+  base_url: 'https://api.openai.com/v1',
+  embedding_model: 'text-embedding-3-small',
+  embedding_dimensions: 1536,
+});
+```
 
-## 8. Configuration
-
-LongMemory reads `LONGMEMORY_*` environment variables (see [`.env.example`](.env.example)). Library use only needs the engine options passed to `createMemory()` — env vars are only used by the bundled server/CLI.
-
-Embedding providers (`openai`, `gemini`, `aws`, `ollama`, `local`, `siray`, `synthetic`) are pluggable; the default `synthetic` is deterministic and dependency-free.
-
----
-
-## 9. Reference
-
-- [`Why.md`](Why.md) — design rationale
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — subsystem overview
-- [`docs/`](docs/) — 30+ topic documents (recall modes, edges, grounding, ingestion, etc.)
+Any function with `embed(text): number[]` works — wrap your own provider as needed.
 
 ---
 
-## 10. License
+## Architecture
 
-Apache-2.0. See [`LICENSE`](LICENSE).
+### Storage (3-table SQLite schema)
+
+```sql
+memories       -- content + embedding BLOB + scope columns + timestamps
+entities       -- named entities extracted from memories
+memory_entities -- many-to-many link
+memories_fts   -- FTS5 virtual table for BM25 keyword search
+```
+
+### Ingest pipeline (4 steps)
+
+```
+raw text
+  → LLM Fact Extraction     -- turn text into atomic facts
+  → LLM Semantic Deduplication  -- skip semantically-duplicate facts vs scope
+  → Embedding              -- generate vector per fact
+  → Storage                -- insert into memories + link entities
+```
+
+### Search pipeline (4 signals)
+
+```
+query
+  → LLM Query Rewriting     -- multiple semantic variants
+  → Parallel 4 signals per variant:
+       semantic   (cosine similarity over stored embeddings)
+       keyword    (BM25 via FTS5)
+       entity     (entity name overlap)
+       temporal   (recency decay)
+  → Reciprocal Rank Fusion (RRF)
+  → Optional LLM rerank     -- end-to-end semantic rerank of top candidates
+  → top-k results
+```
+
+## API
+
+### `LongMemory` (library)
+
+```ts
+class LongMemory {
+  add(text: string, options?: { scope?, metadata?, source?, skip_dedup?, skip_extract? }): Promise<{ added, skipped }>
+  search(query: { query, scope?, top_k?, min_score?, filters? }): Promise<search_result[]>
+  get(id: string): stored_memory | null
+  delete(id: string): void
+  list(scope?: scope, limit?: number): string[]
+  status(): { ready, memory_count, entity_count, store_kind }
+  close(): void
+}
+```
+
+### `start_mcp_http_server(options)`
+
+```ts
+import { start_mcp_http_server } from 'longmemory/mcp/server';
+
+const { engine, close } = await start_mcp_http_server({
+  config: { db_path, llm, embedding },
+  port: 7331,
+  host: '127.0.0.1',
+});
+```
+
+## Environment Variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `LONGMEMORY_OPENAI_API_KEY` | (required) | OpenAI-compatible API key |
+| `LONGMEMORY_OPENAI_BASE_URL` | `https://api.openai.com/v1` | API base URL |
+| `LONGMEMORY_MODEL` | `gpt-4.1-mini` | LLM model |
+| `LONGMEMORY_EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model |
+| `LONGMEMORY_EMBEDDING_DIM` | `1536` | Embedding dimensions |
+| `LONGMEMORY_DB_PATH` | `./longmemory.db` | SQLite file |
+| `LONGMEMORY_MCP_PORT` | `7331` | MCP HTTP port |
+| `LONGMEMORY_MCP_HOST` | `127.0.0.1` | MCP HTTP host |
+
+## License
+
+Apache-2.0
