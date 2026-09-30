@@ -19,6 +19,8 @@ import type { Store } from './store.js';
 import { expand_abbreviations, extract_known_tokens } from '../recall/expansion.js';
 
 const RRF_K = 20; // sharper ranking (was 60 — too flat)
+const POPULARITY_WEIGHT = 0.05; // per log-scale access step
+const POPULARITY_CAP = 0.3;    // max popularity boost (capped)
 const day_ms = 86_400_000;
 
 type candidate_hit = { id: string; signal: keyof signal_scores; score: number };
@@ -64,6 +66,28 @@ export class Search {
         // ── Step 3: Reciprocal Rank Fusion (RRF, sharper K=20) ─────────
         let fused = this.rrf_fuse(all_hits, rerank_depth);
 
+        // ── Step 3.5: Popularity signal (frequently-returned boost) ────
+        // Log-scaled: max count 10 → ~0.12 boost; capped at POPULARITY_CAP.
+        // Applied BEFORE rerank so the LLM reranker also sees it.
+        const fused_ids_for_pop = fused.map((f) => f.id);
+        const access_map = this.store.load_access_counts(fused_ids_for_pop);
+        fused = fused.map((f) => {
+            const meta = access_map.get(f.id);
+            const count = meta?.count ?? 0;
+            const pop_boost = count > 0
+                ? Math.min(POPULARITY_CAP, Math.log1p(count) * POPULARITY_WEIGHT)
+                : 0;
+            return {
+                ...f,
+                signals: {
+                    ...f.signals,
+                    popularity: count > 0 ? Math.min(1, Math.log1p(count) / Math.log1p(100)) : 0,
+                },
+                score: f.score + pop_boost,
+            };
+        });
+        fused.sort((a, b) => b.score - a.score);
+
         // ── Step 4: Entity bonus + hard keyword boost ────────────────
         // (both pre-rerank — give LLM reranker a better starting point)
         fused = this.apply_post_fusion_boosts(fused, hard_keywords);
@@ -93,6 +117,12 @@ export class Search {
             final_ranking = fused.slice(0, top_k).map((f) => ({ id: f.id, score: f.score }));
         }
 
+        // ── Step 5.5: Track access (popularity signal for next time) ───
+        // Only count returned items (top_k), not the full candidate set.
+        if (final_ranking.length > 0) {
+            this.store.increment_access(final_ranking.map((r) => r.id));
+        }
+
         // ── Step 6: Apply min_score filter ─────────────────────────────
         const min_score = query.min_score ?? this.opts.min_score ?? 0;
         final_ranking = final_ranking.filter((r) => r.score >= min_score);
@@ -115,6 +145,7 @@ export class Search {
                     keyword: fused_hit?.signals.keyword ?? 0,
                     entity: fused_hit?.signals.entity ?? 0,
                     temporal: fused_hit?.signals.temporal ?? 0,
+                    popularity: fused_hit?.signals.popularity ?? 0,
                     fused: fused_hit?.score,
                     rerank: this.llm.rerank_provider ? r.score : undefined,
                 },
@@ -246,7 +277,7 @@ export class Search {
             for (let rank = 0; rank < signal_hits.length; rank++) {
                 const hit = signal_hits[rank];
                 const contribution = 1 / (RRF_K + rank + 1);
-                const entry = by_id.get(hit.id) ?? { rrf: 0, signals: { semantic: 0, keyword: 0, entity: 0, temporal: 0 } };
+                const entry = by_id.get(hit.id) ?? { rrf: 0, signals: { semantic: 0, keyword: 0, entity: 0, temporal: 0, popularity: 0 } };
                 entry.rrf += contribution;
                 const current = entry.signals[signal] ?? 0;
                 entry.signals[signal] = Math.max(current, hit.score);

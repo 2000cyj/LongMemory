@@ -48,6 +48,15 @@ export class Store {
     private init_schema(): void {
         const sql = readFileSync(SCHEMA_PATH, 'utf-8');
         this.db.exec(sql);
+        // Backfill columns for DBs created by an earlier version of the schema.
+        this.add_column_if_missing('memories', 'access_count', 'INTEGER NOT NULL DEFAULT 0');
+        this.add_column_if_missing('memories', 'last_accessed_at', 'INTEGER');
+    }
+
+    private add_column_if_missing(table: string, column: string, definition: string): void {
+        const cols = this.db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+        if (cols.some((c) => c.name === column)) return;
+        this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
     }
 
     close(): void {
@@ -258,5 +267,33 @@ export class Store {
     count_entities(): number {
         const row = this.db.prepare(`SELECT COUNT(*) as n FROM entities`).get() as any;
         return row.n;
+    }
+
+    // ── Popularity / access tracking ──────────────────────────────
+
+    /** Increment access_count for the given memory ids. Atomic batch. */
+    increment_access(ids: string[], at_ms: number = Date.now()): void {
+        if (ids.length === 0) return;
+        const stmt = this.db.prepare(
+            `UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?`,
+        );
+        const tx = this.db.transaction((id_list: string[]) => {
+            for (const id of id_list) stmt.run(at_ms, id);
+        });
+        tx(ids);
+    }
+
+    /** Load access_count for a list of memory ids. Returns id → count map. */
+    load_access_counts(ids: string[]): Map<string, { count: number; last_accessed_at: number | null }> {
+        const map = new Map<string, { count: number; last_accessed_at: number | null }>();
+        if (ids.length === 0) return map;
+        const placeholders = ids.map(() => '?').join(',');
+        const rows = this.db.prepare(
+            `SELECT id, access_count, last_accessed_at FROM memories WHERE id IN (${placeholders})`,
+        ).all(...ids) as Array<{ id: string; access_count: number; last_accessed_at: number | null }>;
+        for (const r of rows) {
+            map.set(r.id, { count: r.access_count, last_accessed_at: r.last_accessed_at });
+        }
+        return map;
     }
 }

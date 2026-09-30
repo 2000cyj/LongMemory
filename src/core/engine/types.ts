@@ -54,6 +54,8 @@ export type signal_scores = {
     keyword: number;
     entity: number;
     temporal: number;
+    /** Popularity (0..1) — log-scaled access_count; 0 = never returned */
+    popularity: number;
     /** Fused RRF score before rerank */
     fused?: number;
     /** Final score after LLM rerank (if rerank enabled) */

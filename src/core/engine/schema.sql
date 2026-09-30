@@ -16,7 +16,9 @@ CREATE TABLE IF NOT EXISTS memories (
     metadata TEXT,
     source TEXT DEFAULT 'user',
     created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
+    updated_at INTEGER NOT NULL,
+    access_count INTEGER NOT NULL DEFAULT 0,
+    last_accessed_at INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_memories_user ON memories(scope_user_id);
